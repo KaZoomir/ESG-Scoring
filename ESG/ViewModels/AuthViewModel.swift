@@ -187,7 +187,7 @@ class AuthViewModel: ObservableObject{
         clearFields()
     }
     
-    // MARK: Extra Methods
+    // MARK: - Extra Methods
     
     func clearFields(){
         email = ""
