@@ -131,7 +131,7 @@ struct AppIcons {
 struct AppConfig{
     static let appName = "ESG KBTU"
     static let version = "1.0.0"
-    static let mainPasswordLegth = 8
+    static let minPasswordLength = 8
     static let maxEventParticipants = 100
     static let pointsPerLevel = [0,100,300,600,1000,2000]
     static let levelNames = ["Beginner", "Activist", "Champion", "Leader", "Legend"]
