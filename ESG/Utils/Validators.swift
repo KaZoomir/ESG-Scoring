@@ -47,6 +47,8 @@ struct Validators{
            let phonePredicate = NSPredicate(format: "SELF MATCHES %@", phoneRegex)
            return phonePredicate.evaluate(with: phone)
     }
+    
+    
 }
 
 

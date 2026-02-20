@@ -366,6 +366,12 @@ class AuthViewModel: ObservableObject {
             fullName: signUpFullName
         )
     }
+    
+    // MARK: - Check Validation
+    
+    var isFormValid: Bool{
+        Validators.isValidName(signUpFullName).isValid && Validators.isValidPassword(signUpPassword).isValid && signUpPassword == signUpConfirmPassword
+    }
 }
 
 // MARK: - Auth State (mirrors Kotlin AuthState)
@@ -385,4 +391,6 @@ struct AuthState {
         self.successMessage = successMessage
     }
 }
+
+
 
