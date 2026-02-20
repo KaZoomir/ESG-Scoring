@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
-
 struct LoginView: View {
     @StateObject private var viewModel = AuthViewModel()
     @State private var navigateToHome = false
@@ -16,27 +14,22 @@ struct LoginView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Kotlin: .background(MaterialTheme.colorScheme.background)
                 Color(.systemBackground).ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        // Kotlin: Column.padding(top = 80.dp)
                         Color.clear.frame(height: 80)
                         
                         // MARK: - Logo
-                        // Kotlin: Image(R.drawable.icon_esg, size(92.dp), ContentScale.Crop)
                         Image(systemName: "leaf.circle.fill")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 92, height: 92)
                             .foregroundStyle(Color.primaryGreen)
-                        
-                        // Kotlin: Spacer(height = 32.dp)
+
                         Color.clear.frame(height: 32)
                         
                         // MARK: - Title
-                        // Kotlin: Text("Sign In", fontSize = 30.sp, fontWeight = W500)
                         Text("Sign In")
                             .font(.system(size: 30, weight: .medium))
                             .foregroundStyle(Color(.label))
@@ -44,7 +37,6 @@ struct LoginView: View {
                             .padding(.bottom, 10)
                         
                         // MARK: - Email Field
-                        // Kotlin: OutlinedTextField with green border
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Email")
                                 .font(.system(size: 14))
@@ -60,13 +52,20 @@ struct LoginView: View {
                                     RoundedRectangle(cornerRadius: 4)
                                         .stroke(Color.primaryGreen, lineWidth: 1)
                                 )
+                            
+                            // Show email validation error
+                            if let error = viewModel.emailError {
+                                Text(error)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.red)
+                                    .padding(.top, 2)
+                            }
                         }
                         
                         // Kotlin: Spacer(height = 16.dp)
                         Color.clear.frame(height: 16)
                         
                         // MARK: - Password Field
-                        // Kotlin: OutlinedTextField with trailingIcon
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your Password")
                                 .font(.system(size: 14))
@@ -92,17 +91,22 @@ struct LoginView: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color.primaryGreen, lineWidth: 1)
                             )
+                            
+                            // Show password validation error
+                            if let error = viewModel.passwordError {
+                                Text(error)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.red)
+                                    .padding(.top, 2)
+                            }
                         }
                         
-                        // Kotlin: Spacer(height = 8.dp)
                         Color.clear.frame(height: 8)
                         
                         // MARK: - Remember Me + Forgot Password
-                        // Kotlin: Row(SpaceBetween) { Switch(scale 0.8f) + "Remember Me" } + "Forgot Password?"
                         HStack {
                             HStack(spacing: 4) {
-                                // Kotlin: Switch with green colors, scale 0.8f
-                                Toggle("", isOn: .constant(false))
+                                Toggle("", isOn: $viewModel.rememberMe)
                                     .labelsHidden()
                                     .scaleEffect(0.8)
                                     .tint(Color.primaryGreen)
@@ -115,25 +119,28 @@ struct LoginView: View {
                             Spacer()
                             
                             Button("Forgot Password?") {
-                                viewModel.resetPassword()
+                                viewModel.resetPassword(email: viewModel.email)
                             }
                             .font(.system(size: 12))
                             .foregroundStyle(Color(.darkGray))
                         }
                         
-                        // Kotlin: Spacer(height = 16.dp)
                         Color.clear.frame(height: 16)
                         
                         // MARK: - Sign In Button
-                        // Kotlin: Box + shadow(elevation = 10.dp, RoundedCornerShape(6.dp))
-                        // Button: height = 56.dp, RoundedCornerShape(6.dp), green container, white text, fontSize = 16.sp
                         Button(action: viewModel.login) {
-                            Text("Sign In")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
+                            if viewModel.uiState.isLoading {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                            } else {
+                                Text("Sign In")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.white)
+                            }
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
                         .background(Color.primaryGreen)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .shadow(
@@ -142,31 +149,39 @@ struct LoginView: View {
                             x: 0,
                             y: 4
                         )
-                        .disabled(viewModel.isLoading)
+                        .disabled(viewModel.uiState.isLoading)
                         
-                        // Kotlin: if (uiState.isLoading) CircularProgressIndicator(padding = 16.dp)
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .progressViewStyle(.circular)
-                                .padding(16)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        }
+                        Color.clear.frame(height: 16)
                         
-                        // Kotlin: if (errorMessage.isNotEmpty) Text(color = Red, padding = 16.dp)
-                        if let error = viewModel.errorMessage {
-                            Text(error)
+                        // MARK: - Error Message
+                        if !viewModel.uiState.errorMessage.isEmpty {
+                            Text(viewModel.uiState.errorMessage)
                                 .font(.system(size: 14))
                                 .foregroundStyle(.red)
                                 .multilineTextAlignment(.center)
-                                .padding(16)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
                                 .frame(maxWidth: .infinity)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(8)
                         }
                         
-                        // Kotlin: Spacer(height = 20.dp)
+                        // MARK: - Success Message
+                        if !viewModel.uiState.successMessage.isEmpty {
+                            Text(viewModel.uiState.successMessage)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.primaryGreen)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .background(Color.primaryGreen.opacity(0.1))
+                                .cornerRadius(8)
+                        }
+                        
                         Color.clear.frame(height: 20)
                         
                         // MARK: - Divider "Or"
-                        // Kotlin: Row(padding vertical = 16.dp) { HorizontalDivider + Text("Or", 14.sp, W500) + HorizontalDivider }
                         HStack {
                             Rectangle()
                                 .fill(Color.gray)
@@ -186,14 +201,13 @@ struct LoginView: View {
                         Color.clear.frame(height: 20)
                         
                         // MARK: - Sign Up
-                        // Kotlin: Row(Center) { Text("Don't have an account? ", 14.sp) + Text("Sign up", 14.sp, green) }
                         HStack(spacing: 0) {
                             Text("Don't have an account? ")
                                 .font(.system(size: 14))
                                 .foregroundStyle(Color(.label))
                             
                             NavigationLink("Sign up") {
-                                // SignUpView()
+//                                SignUpView()
                             }
                             .font(.system(size: 14))
                             .foregroundStyle(Color.primaryGreen)
@@ -205,11 +219,13 @@ struct LoginView: View {
             }
             .navigationBarHidden(true)
         }
-        .onChange(of: viewModel.isAuthenticated) { authenticated in
-            if authenticated { navigateToHome = true }
+        .onChange(of: viewModel.navigateToMain) { shouldNavigate in
+            if shouldNavigate {
+                navigateToHome = true
+            }
         }
         .fullScreenCover(isPresented: $navigateToHome) {
-            // MainTabView()
+//            MainTabView()
         }
     }
 }
