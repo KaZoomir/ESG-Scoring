@@ -98,7 +98,7 @@ class NetworkService {
     
     // MARK: - Mock Mode (for development without backend)
     
-    var useMockData = true // Set to false when backend is ready
+    var useMockData = false// Set to false when backend is ready
     
     func mockRequest<T: Decodable>(
         delay: TimeInterval = 1.0,
