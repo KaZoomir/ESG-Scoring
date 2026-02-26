@@ -42,21 +42,10 @@ struct HomeView: View {
                                 .padding(.top, 8)
                             }
                             
-                            // Live events list
-                            if !viewModel.feedLiveEvents.isEmpty {
-                                ForEach(viewModel.feedLiveEvents) { event in
-                                    NavigationLink(destination: Text("Event: \(event.title)")) {
-                                        LiveEventRowView(event: event)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .padding(.horizontal, 16)
-                                }
-                            }
-                            
                             // Empty state
                             if viewModel.feedProjects.isEmpty && !viewModel.isLoading
                                 && (viewModel.selectedTab == .projects || viewModel.selectedTab == .all) {
-                                EmptyFeedView(tab: viewModel.selectedTab)
+                                EmptyFeedView()
                             }
                             
                             // Projects feed
@@ -230,28 +219,41 @@ private struct UpcomingEventsSectionView: View {
 }
 
 // MARK: - Event Card
+// Matches Android EventCard: 260×260dp, date col + image side by side, time string field
 
 struct EventCardView: View {
     let event: Event
     
+    // Android uses event.time string field, not date formatting
+    private var timeString: String {
+        event.time.isEmpty ? "--:--" : event.time
+    }
+    
+    // Android: event.registeredUsers?.size ?: 0
+    private var participantCount: Int {
+        event.registeredUsers.count
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             
-            // Top section: date + illustration
-            HStack(alignment: .top, spacing: 0) {
+            // Top row: date column + event_picture image side by side
+            // Android: Row { Column{dateBox, timeBox} + Image(event_picture, height=132dp) }
+            HStack(alignment: .top, spacing: 8) {
                 
-                // Date + time
-                VStack(spacing: 6) {
+                // Left: date + time boxes
+                // Android: Column { Box(60×56, green, rounded12) + Box(60×32, green, rounded8) }
+                VStack(spacing: 4) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 10)
+                        RoundedRectangle(cornerRadius: 12)
                             .fill(Color.primaryGreen)
-                            .frame(width: 62, height: 62)
+                            .frame(width: 60, height: 56)
                         VStack(spacing: 0) {
-                            Text(event.date.formatted("d"))
-                                .font(.system(size: 24, weight: .bold))
+                            Text(event.dayNumber)
+                                .font(.system(size: 20, weight: .semibold))
                                 .foregroundStyle(.white)
-                            Text(event.date.formatted("MMM"))
-                                .font(.system(size: 12, weight: .semibold))
+                            Text(event.monthName)
+                                .font(.system(size: 12))
                                 .foregroundStyle(.white)
                         }
                     }
@@ -259,87 +261,78 @@ struct EventCardView: View {
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.primaryGreen)
-                            .frame(width: 62, height: 30)
-                        Text(event.date.formatted("HH:mm"))
-                            .font(.system(size: 13, weight: .semibold))
+                            .frame(width: 60, height: 32)
+                        Text(timeString)
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(.white)
                     }
                 }
-                .padding(.leading, 12)
-                .padding(.top, 12)
                 
-                Spacer()
-                
-                // Stars + illustration
-                VStack(alignment: .trailing, spacing: 6) {
-                    HStack(spacing: 2) {
-                        ForEach(0..<5, id: \.self) { _ in
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(Color.primaryGreen)
-                        }
-                    }
-                    
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.primaryGreen.opacity(0.1))
-                            .frame(width: 96, height: 88)
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 32))
-                            .foregroundStyle(Color.primaryGreen.opacity(0.6))
-                    }
+                // Right: event illustration
+                // Android: Image(event_picture, height=132dp, ContentScale.Fit)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.primaryGreen.opacity(0.08))
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(Color.primaryGreen.opacity(0.5))
                 }
-                .padding(.trailing, 12)
-                .padding(.top, 12)
+                .frame(height: 100)
             }
+            .padding(.leading, 20)
+            .padding(.trailing, 2)
+            .padding(.top, 8)
             
-            Color.clear.frame(height: 16)
+            Color.clear.frame(height: 20)
             
-            // Title
+            // Title — Android: fontSize=18, fontWeight=W500
             Text(event.title)
-                .font(.h6)
+                .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(Color(.label))
-                .lineLimit(2)
-                .padding(.horizontal, 12)
+                .lineLimit(1)
+                .padding(.horizontal, 20)
             
-            Color.clear.frame(height: 6)
+            Color.clear.frame(height: 4)
             
-            // Participants
-            HStack(spacing: -8) {
-                ForEach(0..<min(3, max(1, event.currentParticipants)), id: \.self) { _ in
-                    Image(systemName: "person.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(Color(.label))
+            // Participants — Android: repeat(3){ AccountCircle(28dp) } + Spacer(12) + "+N Going"
+            HStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color(.label))
+                    }
                 }
+                
+                Color.clear.frame(width: 12)
+                
+                Text("+\(participantCount) Going")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.primaryGreen)
             }
-            .padding(.leading, 12)
+            .padding(.leading, 20)
             
-            Text("+\(event.currentParticipants) Going")
-                .font(.bodySmall)
-                .foregroundStyle(Color.primaryGreen)
-                .padding(.leading, 12)
-                .padding(.top, 2)
+            Spacer(minLength: 0)
             
-            Spacer(minLength: 10)
-            
-            // Location
+            // Location — Android: Row { LocationOn(gray_outline) + Text(event.location, gray_outline) }
             HStack(spacing: 4) {
                 Image(systemName: "location.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 14))
                     .foregroundStyle(Color(hex: "e1e1e3"))
                 Text(event.location ?? "")
-                    .font(.bodySmall)
-                    .foregroundStyle(Color(.systemGray))
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(hex: "e1e1e3"))
                     .lineLimit(1)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
         }
-        .frame(width: 188, height: 242)
+        // Android: width=260dp, height=260dp
+        .frame(width: 260, height: 260)
         .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.large)
+            RoundedRectangle(cornerRadius: 20)
                 .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
         )
     }
@@ -501,82 +494,15 @@ private struct ProjectCardView: View {
     }
 }
 
-// MARK: - Live Event Row
-
-private struct LiveEventRowView: View {
-    let event: Event
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.primaryGreen)
-                    .frame(width: 48, height: 48)
-                VStack(spacing: 0) {
-                    Text(event.date.formatted("d"))
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text(event.date.formatted("MMM"))
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.white)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.h6)
-                    .foregroundStyle(Color(.label))
-                    .lineLimit(1)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color(.systemGray))
-                    Text(event.date.formatted("HH:mm"))
-                        .font(.bodySmall)
-                        .foregroundStyle(Color(.systemGray))
-                    
-                    if let location = event.location {
-                        Text("·")
-                            .foregroundStyle(Color(.systemGray))
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color(.systemGray))
-                        Text(location)
-                            .font(.bodySmall)
-                            .foregroundStyle(Color(.systemGray))
-                            .lineLimit(1)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12))
-                .foregroundStyle(Color(.systemGray))
-        }
-        .padding(12)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.medium)
-                .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-        )
-    }
-}
-
 // MARK: - Empty Feed
 
 private struct EmptyFeedView: View {
-    let tab: HomeTab
-    
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: tab == .live ? "antenna.radiowaves.left.and.right.slash" : "tray")
+            Image(systemName: "tray")
                 .font(.system(size: 52))
                 .foregroundStyle(Color(hex: "e1e1e3"))
-            Text(tab == .live ? "No live events right now" : "Nothing here yet")
+            Text("Nothing here yet")
                 .font(.bodyMedium)
                 .foregroundStyle(Color(.systemGray))
         }
@@ -715,6 +641,7 @@ struct ActivityView: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+
 
 // MARK: - Preview
 

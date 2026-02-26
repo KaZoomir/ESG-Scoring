@@ -5,7 +5,11 @@
 //  Created by Alikhan Kassiman on 2026.02.12.
 //
 
+
 import Foundation
+import FirebaseFirestore
+
+// MARK: - ESGCategory (unchanged)
 
 enum ESGCategory: String, Codable, CaseIterable {
     case environmental = "Environmental"
@@ -29,24 +33,38 @@ enum ESGCategory: String, Codable, CaseIterable {
     }
 }
 
+// MARK: - EventStatus (unchanged)
+
 enum EventStatus: String, Codable {
-    case upcoming = "Upcoming"
-    case ongoing = "Ongoing"
+    case upcoming  = "Upcoming"
+    case ongoing   = "Ongoing"
     case completed = "Completed"
     case cancelled = "Cancelled"
 }
 
+// MARK: - Event
+// Added @DocumentID and Firestore-compatible fields to match Android Event.kt
+// All existing business logic methods are preserved
+
 struct Event: Codable, Identifiable {
-    let id: String
+    @DocumentID var id: String?
+    
+    // Firestore fields — match Android Event.kt exactly
     var title: String
-    var category: ESGCategory
-    var date: Date
-    var endDate: Date?
-    var points: Int
     var description: String
+    var date: Date
+    var time: String           // "HH:mm" string — same as Android
     var location: String?
+    var type: String?          // event type string from Android
     var organizer: String?
     var imageURL: String?
+    var registeredUsers: [String: EventUserData]  // studentId → data, mirrors Android
+    var roles: [String: RoleDetails]              // roleName  → details, mirrors Android
+    
+    // Fields used by existing iOS app
+    var category: ESGCategory?
+    var endDate: Date?
+    var points: Int
     var maxParticipants: Int?
     var currentParticipants: Int
     var isOnline: Bool
@@ -54,17 +72,22 @@ struct Event: Codable, Identifiable {
     var requirements: String?
     var status: EventStatus
     
+    // MARK: - Init (kept for EventService mock data)
     init(
-        id: String = UUID().uuidString,
+        id: String? = nil,
         title: String,
-        category: ESGCategory,
-        date: Date,
-        endDate: Date? = nil,
-        points: Int,
         description: String,
+        date: Date,
+        time: String = "",
         location: String? = nil,
+        type: String? = nil,
         organizer: String? = nil,
         imageURL: String? = nil,
+        registeredUsers: [String: EventUserData] = [:],
+        roles: [String: RoleDetails] = [:],
+        category: ESGCategory? = nil,
+        endDate: Date? = nil,
+        points: Int = 0,
         maxParticipants: Int? = nil,
         currentParticipants: Int = 0,
         isOnline: Bool = false,
@@ -74,14 +97,18 @@ struct Event: Codable, Identifiable {
     ) {
         self.id = id
         self.title = title
-        self.category = category
-        self.date = date
-        self.endDate = endDate
-        self.points = points
         self.description = description
+        self.date = date
+        self.time = time
         self.location = location
+        self.type = type
         self.organizer = organizer
         self.imageURL = imageURL
+        self.registeredUsers = registeredUsers
+        self.roles = roles
+        self.category = category
+        self.endDate = endDate
+        self.points = points
         self.maxParticipants = maxParticipants
         self.currentParticipants = currentParticipants
         self.isOnline = isOnline
@@ -90,7 +117,26 @@ struct Event: Codable, Identifiable {
         self.status = status
     }
     
-    // Business logic
+    // MARK: - Computed (mirrors Android)
+    
+    var participantCount: Int {
+        registeredUsers.count
+    }
+    
+    var dayNumber: String {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f.string(from: date)
+    }
+    
+    var monthName: String {
+        let f = DateFormatter()
+        f.dateFormat = "MMM"
+        return f.string(from: date)
+    }
+    
+    // MARK: - Business Logic (unchanged from original)
+    
     func isFull() -> Bool {
         guard let max = maxParticipants else { return false }
         return currentParticipants >= max
@@ -119,4 +165,22 @@ struct Event: Codable, Identifiable {
         formatter.dateFormat = "MMM dd, yyyy • HH:mm"
         return formatter.string(from: date)
     }
+}
+
+// MARK: - EventUserData (mirrors Android EventUserData.kt)
+
+struct EventUserData: Codable {
+    var role: String   = ""
+    var points: Int    = 0
+    var status: String = "registered"   // registered | approved | rejected | completed
+    var criteria: [String: Bool]?
+}
+
+// MARK: - RoleDetails (mirrors Android RoleDetails.kt)
+
+struct RoleDetails: Codable {
+    var activity: String = ""
+    var points: Int      = 0
+    var time: String     = ""
+    var status: String   = "registered"
 }

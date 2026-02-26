@@ -41,10 +41,6 @@ class HomeViewModel: ObservableObject {
             .sorted { $0.date < $1.date }
     }
     
-    var liveEvents: [Event] {
-        events.filter { Calendar.current.isDateInToday($0.date) }
-    }
-    
     var showEventsRow: Bool {
         selectedTab == .all || selectedTab == .events
     }
@@ -54,10 +50,6 @@ class HomeViewModel: ObservableObject {
         case .all, .projects: return projects
         default: return []
         }
-    }
-    
-    var feedLiveEvents: [Event] {
-        selectedTab == .live ? liveEvents : []
     }
     
     // MARK: - Initialization
