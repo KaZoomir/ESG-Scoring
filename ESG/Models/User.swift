@@ -16,6 +16,7 @@ struct User: Codable, Identifiable {
     var avatar: String?
     var studentID: String?
     var faculty: String?
+    var role: String? // "member" | "manager"
     var joinedDate: Date
     
     // ESG Score breakdown
@@ -38,6 +39,7 @@ struct User: Codable, Identifiable {
         avatar: String? = nil,
         studentID: String? = nil,
         faculty: String? = nil,
+        role: String? = nil,
         joinedDate: Date = Date(),
         environmentalScore: Int = 0,
         socialScore: Int = 0,
@@ -55,6 +57,7 @@ struct User: Codable, Identifiable {
         self.avatar = avatar
         self.studentID = studentID
         self.faculty = faculty
+        self.role = role
         self.joinedDate = joinedDate
         self.environmentalScore = environmentalScore
         self.socialScore = socialScore

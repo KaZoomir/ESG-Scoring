@@ -10,41 +10,38 @@ import Combine
 import FirebaseAuth
 import FirebaseFirestore
 
-class ProfileViewModel: ObservableObject{
-    // MARK: - Published
-    
+class ProfileViewModel: ObservableObject {
+
     @Published var user: User?
     @Published var badges: [Badge] = []
-    @Published var leaderboard: [Rating] = []
-    @Published var isLoading: Bool = false
+    @Published var isLoading = false
     @Published var errorMessage: String?
+
+    // UI state
+    @Published var showEditDialog = false
     @Published var showLogoutConfirm = false
     @Published var isLoggedOut = false
-    
-    // MARK: - Private
-    private var userService = UserService.shared
+
+    private let userService = UserService.shared
     private var cancellables = Set<AnyCancellable>()
-    private var firestore = Firestore.firestore()
-    
-    init(){
-        loadProfile()
-    }
-    
-    func loadProfile(){
-        guard let uid = Auth.auth().currentUser?.uid else {return}
+    private let firestore = Firestore.firestore()
+
+    init() { loadProfile() }
+
+    func loadProfile() {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
         isLoading = true
-        
-        firestore.collection("users").document(uid).getDocument{[weak self] snapshot, error in
-            DispatchQueue.main.async{
-                if let data = snapshot?.data(){
+
+        firestore.collection("users").document(uid).getDocument { [weak self] snapshot, _ in
+            DispatchQueue.main.async {
+                if let data = snapshot?.data() {
                     self?.user = User(
                         id: uid,
                         name: data["name"] as? String ?? "User",
                         email: data["email"] as? String ?? "",
-                        totalESGScore: data["totalESGScore"] as? Int ?? 0,
-                        badges: [],
-                        studentID: data["studentID"] as? String ?? "",
-                        faculty: data["faculty"] as? String ?? "",
+                        totalESGScore: data["overallPoints"] as? Int ?? data["totalESGScore"] as? Int ?? 0,
+                        studentID: data["studentId"] as? String,
+                        faculty: data["faculty"] as? String,
                         environmentalScore: data["environmentalScore"] as? Int ?? 0,
                         socialScore: data["socialScore"] as? Int ?? 0,
                         governanceScore: data["governanceScore"] as? Int ?? 0,
@@ -53,8 +50,8 @@ class ProfileViewModel: ObservableObject{
                         currentStreak: data["currentStreak"] as? Int ?? 0,
                         longestStreak: data["longestStreak"] as? Int ?? 0
                     )
-                }
-                else {
+                } else {
+                    // Fallback mock
                     self?.user = User(
                         id: uid,
                         name: Auth.auth().currentUser?.displayName ?? "User",
@@ -63,65 +60,38 @@ class ProfileViewModel: ObservableObject{
                         studentID: "22B030477",
                         faculty: "SITE",
                         environmentalScore: 150,
-                        socialScore: 100,
-                        governanceScore: 200,
+                        socialScore: 200,
+                        governanceScore: 100,
                         eventsAttended: 12,
                         eventsCompleted: 10,
-                        currentStreak: 8,
-                        longestStreak: 10
-                        
+                        currentStreak: 5,
+                        longestStreak: 8
                     )
                 }
+                self?.isLoading = false
             }
         }
+
+        // Badges
         userService.fetchBadges(userId: uid)
             .receive(on: DispatchQueue.main)
             .sink(
-                receiveCompletion: {[weak self] completion in
-                    self?.isLoading = false
-                    if case .failure(let error) = completion{
-                        self? .errorMessage = error.localizedDescription
-                    }
-                    
-                },
-                receiveValue: {[weak self] badges in
-                    self?.badges = badges
-                }
-            )
-            .store(in: &cancellables)
-        
-        userService.fetchLeaderboard(limit: 10)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: {_ in},
-                receiveValue: {[weak self] ratings in
-                    self?.leaderboard = ratings
-                }
+                receiveCompletion: { _ in },
+                receiveValue: { [weak self] in self?.badges = $0 }
             )
             .store(in: &cancellables)
     }
-    
-    // MARK: - Log Out
-    
-    func logout(){
-        do{
-            try Auth.auth().signOut()
-            isLoggedOut = true
-        }
-        catch{
-            errorMessage = "Failed to sign out"
-        }
+
+    func updateUser(studentId: String, email: String) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let updates: [String: Any] = ["studentId": studentId, "email": email]
+        firestore.collection("users").document(uid).updateData(updates)
+        user?.studentID = studentId
+        user?.email = email
     }
-    
-    // MARK: - Helpers
-    
-    func myRank() -> Rating? {
-        guard let uid = Auth.auth().currentUser?.uid else {return nil}
-        return leaderboard.first(where: { $0.userId == uid})
+
+    func logout() {
+        try? Auth.auth().signOut()
+        isLoggedOut = true
     }
-    
-    func clearerror(){
-        errorMessage = nil
-    }
-                                 
 }
