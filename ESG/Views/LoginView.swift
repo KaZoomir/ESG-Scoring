@@ -225,7 +225,7 @@ struct LoginView: View {
             }
         }
         .fullScreenCover(isPresented: $navigateToHome) {
-//            MainTabView()
+            MainTabView()
         }
     }
 }
