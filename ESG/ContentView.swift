@@ -9,23 +9,22 @@ import SwiftUI
 import FirebaseAuth
 
 struct ContentView: View {
-    @State private var isUserLoggedIn = false
+    @State private var isUserLoggedIn: Bool = false
     
-    var body: some View {
+    var body: some View{
         Group {
-            if isUserLoggedIn {
-//                MainTabView()
-            } else {
+            if isUserLoggedIn{
+//                MainView()
+            }
+            else{
                 LoginView()
             }
         }
-        .onAppear {
+        .onAppear{
             checkAuthState()
         }
     }
-    
-    private func checkAuthState() {
-        // Check if user is already logged in
+    private func checkAuthState(){
         isUserLoggedIn = Auth.auth().currentUser != nil
     }
 }

@@ -207,7 +207,7 @@ struct LoginView: View {
                                 .foregroundStyle(Color(.label))
                             
                             NavigationLink("Sign up") {
-//                                SignUpView()
+                                SignUpView()
                             }
                             .font(.system(size: 14))
                             .foregroundStyle(Color.primaryGreen)

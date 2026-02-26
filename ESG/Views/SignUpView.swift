@@ -206,7 +206,7 @@ struct SignUpView: View {
                           Color.clear.frame(height: 24)
 
                           // MARK: - Sign Up Button
-                          Button(action: {
+                          Button{
                               if viewModel.isFormValid {
                                   viewModel.signUpWithEmail(
                                       email: viewModel.signUpEmail,
@@ -215,7 +215,7 @@ struct SignUpView: View {
                                       fullName: viewModel.signUpFullName
                                   )
                               }
-                          }) {
+                          } label: {
                               if viewModel.uiState.isLoading {
                                   ProgressView()
                                       .progressViewStyle(.circular)
