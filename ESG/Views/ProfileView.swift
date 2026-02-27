@@ -12,12 +12,11 @@ import FirebaseAuth
 
 struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
-    @State private var selectedSection: ProfileSection = .overview
 
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "fbfbfb").ignoresSafeArea()
+                Color(hex: "F2F2F2").ignoresSafeArea()
 
                 if viewModel.isLoading && viewModel.user == nil {
                     ProgressView()
@@ -25,45 +24,114 @@ struct ProfileView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
 
-                            // MARK: - Header Card
-                            ProfileHeaderCard(user: viewModel.user)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 12)
+                            // MARK: Back + Title row
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 24))
+                                    .foregroundStyle(Color(.label))
+                                    .frame(width: 36, height: 36)
+                                Text("Profile")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundStyle(.black)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
 
-                            // MARK: - ESG Score Breakdown
+                            Spacer().frame(height: 12)
+
                             if let user = viewModel.user {
-                                ESGScoreBreakdownCard(user: user)
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 12)
-                            }
 
-                            // MARK: - Section Tabs
-                            ProfileSectionTabs(selected: $selectedSection)
-                                .padding(.top, 16)
-
-                            Rectangle()
-                                .fill(Color(hex: "e1e1e3"))
-                                .frame(height: 1)
-
-                            // MARK: - Section Content
-                            switch selectedSection {
-                            case .overview:
-                                ProfileOverviewSection(user: viewModel.user, leaderboard: viewModel.leaderboard)
-                            case .badges:
-                                ProfileBadgesSection(badges: viewModel.badges)
-                            case .settings:
-                                ProfileSettingsSection(
-                                    showLogoutConfirm: $viewModel.showLogoutConfirm
+                                // MARK: Profile Header
+                                ProfileHeaderCard(
+                                    user: user,
+                                    onEditClick: { viewModel.showEditDialog = true },
+                                    onAvatarClick: {}
                                 )
+                                .padding(.horizontal, 16)
+
+                                Spacer().frame(height: 12)
+
+                                // MARK: Badges + Buttons Card
+                                VStack(spacing: 0) {
+                                    BadgesSection(badges: viewModel.badges)
+                                        .padding(16)
+
+                                    Divider().background(Color(hex: "E6E6E6"))
+
+                                    VStack(spacing: 8) {
+                                        NavigationLink(destination: RatingView()) {
+                                            Text("View Rating")
+                                                .font(.system(size: 16))
+                                                .foregroundStyle(.white)
+                                                .frame(maxWidth: .infinity)
+                                                .frame(height: 48)
+                                                .background(Color.primaryGreen)
+                                                .clipShape(Capsule())
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 16)
+
+                                        ManagerMemberActions(role: user.role ?? "member")
+                                            .padding(.horizontal, 16)
+                                    }
+                                    .padding(.bottom, 16)
+                                }
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .padding(.horizontal, 16)
+
+                                Spacer().frame(height: 8)
+
+                                // MARK: Navigation + Sign Out Card
+                                VStack(spacing: 0) {
+                                    NavigationCardList(items: [
+                                        ("magnifyingglass",    "Explore"),
+                                        ("calendar",           "My Events"),
+                                        ("envelope",           "Contact Us"),
+                                        ("gearshape",          "Settings"),
+                                        ("questionmark.circle","Help & FAQs"),
+                                    ])
+
+                                    Button {
+                                        viewModel.showLogoutConfirm = true
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                                .font(.system(size: 20))
+                                                .foregroundStyle(.red)
+                                            Text("Sign Out")
+                                                .font(.system(size: 16, weight: .semibold))
+                                                .foregroundStyle(.red)
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 48)
+                                        .overlay(Capsule().stroke(Color.red, lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(16)
+
+                                    Spacer().frame(height: 24)
+                                }
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .padding(.horizontal, 16)
                             }
 
-                            Color.clear.frame(height: 90)
+                            Spacer().frame(height: 90)
                         }
                     }
                     .refreshable { viewModel.loadProfile() }
                 }
             }
             .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $viewModel.showEditDialog) {
+            EditProfileDialog(
+                studentId: viewModel.user?.studentID ?? "",
+                email: viewModel.user?.email ?? "",
+                onSave: { sid, email in viewModel.updateUser(studentId: sid, email: email) }
+            )
         }
         .alert("Sign Out", isPresented: $viewModel.showLogoutConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -72,7 +140,7 @@ struct ProfileView: View {
             Text("Are you sure you want to sign out?")
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("OK") { viewModel.clearError() }
+            Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
@@ -82,678 +150,385 @@ struct ProfileView: View {
     }
 }
 
-// MARK: - Profile Section Enum
-
-enum ProfileSection: String, CaseIterable, Identifiable {
-    case overview = "Overview"
-    case badges   = "Badges"
-    case settings = "Settings"
-    var id: String { rawValue }
-}
-
-// MARK: - Header Card
+// MARK: - ProfileHeaderCard
+// Android: Box { Image(profile_bg) + IconButton(edit, topEnd) + Column { avatar, name(warm_green), id, email, points, progressBar } }
 
 private struct ProfileHeaderCard: View {
-    let user: User?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 16) {
-
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(Color.primaryGreen.opacity(0.12))
-                        .frame(width: 72, height: 72)
-                    Text(user?.name.prefix(1).uppercased() ?? "?")
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(Color.primaryGreen)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(user?.name ?? "—")
-                        .font(.h4)
-                        .foregroundStyle(Color(.label))
-
-                    if let email = user?.email {
-                        Label(email, systemImage: "envelope")
-                            .font(.bodySmall)
-                            .foregroundStyle(Color(.systemGray))
-                            .lineLimit(1)
-                    }
-
-                    if let sid = user?.studentID, !sid.isEmpty {
-                        Label(sid, systemImage: "person.text.rectangle")
-                            .font(.bodySmall)
-                            .foregroundStyle(Color(.systemGray))
-                    }
-
-                    if let faculty = user?.faculty, !faculty.isEmpty {
-                        Label(faculty, systemImage: "building.2")
-                            .font(.bodySmall)
-                            .foregroundStyle(Color(.systemGray))
-                    }
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-
-            Divider().padding(.horizontal, 16).padding(.top, 12)
-
-            // Level + points
-            HStack(spacing: 0) {
-                VStack(spacing: 2) {
-                    Text(user?.getUserLevel() ?? "—")
-                        .font(.h6)
-                        .foregroundStyle(Color.primaryGreen)
-                    Text("Level")
-                        .font(.caption)
-                        .foregroundStyle(Color(.systemGray))
-                }
-                .frame(maxWidth: .infinity)
-
-                Divider().frame(height: 36)
-
-                VStack(spacing: 2) {
-                    Text("\(user?.totalESGScore ?? 0)")
-                        .font(.h6)
-                        .foregroundStyle(Color(.label))
-                    Text("ESG Points")
-                        .font(.caption)
-                        .foregroundStyle(Color(.systemGray))
-                }
-                .frame(maxWidth: .infinity)
-
-                Divider().frame(height: 36)
-
-                VStack(spacing: 2) {
-                    Text("\(user?.currentStreak ?? 0)🔥")
-                        .font(.h6)
-                        .foregroundStyle(Color(.label))
-                    Text("Streak")
-                        .font(.caption)
-                        .foregroundStyle(Color(.systemGray))
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .padding(.vertical, 12)
-
-            // Progress bar to next level
-            if let user = user {
-                let progress = user.getProgressToNextLevel()
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Progress to \(nextLevel(user))")
-                            .font(.caption)
-                            .foregroundStyle(Color(.systemGray))
-                        Spacer()
-                        Text("\(Int(progress * 100))%")
-                            .font(.caption)
-                            .foregroundStyle(Color.primaryGreen)
-                    }
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(hex: "e1e1e3"))
-                                .frame(height: 6)
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.primaryGreen)
-                                .frame(width: geo.size.width * progress, height: 6)
-                        }
-                    }
-                    .frame(height: 6)
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-            }
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.large)
-                .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-        )
-    }
-
-    private func nextLevel(_ user: User) -> String {
-        let levels = AppConfig.levelNames
-        let current = user.getUserLevel()
-        if let idx = levels.firstIndex(of: current), idx < levels.count - 1 {
-            return levels[idx + 1]
-        }
-        return "Max"
-    }
-}
-
-// MARK: - ESG Score Breakdown
-
-private struct ESGScoreBreakdownCard: View {
     let user: User
+    let onEditClick: () -> Void
+    let onAvatarClick: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("ESG Score Breakdown")
-                .font(.h6)
-                .foregroundStyle(Color(.label))
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+    @State private var animatedProgress: CGFloat = 0
 
-            VStack(spacing: 10) {
-                ScoreBar(label: "Environmental", score: user.environmentalScore, total: user.totalESGScore, color: Color.environmentalColor, icon: "leaf.fill")
-                ScoreBar(label: "Social", score: user.socialScore, total: user.totalESGScore, color: Color.socialColor, icon: "person.3.fill")
-                ScoreBar(label: "Governance", score: user.governanceScore, total: user.totalESGScore, color: Color.governanceColor, icon: "building.columns.fill")
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 14)
-        }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.large)
-                .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-        )
-    }
-}
-
-private struct ScoreBar: View {
-    let label: String
-    let score: Int
-    let total: Int
-    let color: Color
-    let icon: String
-
-    var progress: Double {
-        guard total > 0 else { return 0 }
-        return min(1.0, Double(score) / Double(total))
+    private var fraction: CGFloat {
+        CGFloat(min(user.totalESGScore, 1000)) / 1000.0
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 13))
-                    .foregroundStyle(color)
-                Text(label)
-                    .font(.bodySmall)
-                    .foregroundStyle(Color(.label))
-                Spacer()
-                Text("\(score) pts")
-                    .font(.bodySmall)
-                    .foregroundStyle(color)
+        ZStack(alignment: .topTrailing) {
+            // profile_bg dark green gradient
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LinearGradient(
+                    colors: [Color(hex: "0F2B1F"), Color(hex: "1B4332")],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+
+            // Edit icon — top endё
+            Button(action: onEditClick) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.white)
+                    .padding(16)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(color.opacity(0.12))
-                        .frame(height: 8)
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(color)
-                        .frame(width: geo.size.width * progress, height: 8)
-                }
-            }
-            .frame(height: 8)
-        }
-    }
-}
 
-// MARK: - Section Tabs
+            // Content column — start aligned
+            VStack(alignment: .leading, spacing: 0) {
 
-private struct ProfileSectionTabs: View {
-    @Binding var selected: ProfileSection
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(ProfileSection.allCases) { section in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selected = section
-                    }
-                } label: {
-                    VStack(spacing: 2) {
-                        Text(section.rawValue)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(selected == section ? Color(.label) : Color(.systemGray))
-                            .padding(.horizontal, 8)
-                            .padding(.top, 4)
-
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(selected == section ? Color.primaryGreen : Color.clear)
-                            .frame(width: 24, height: 4)
-                            .padding(.bottom, 4)
+                // Avatar circle
+                Button(action: onAvatarClick) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.5))
+                            .frame(width: 64, height: 64)
+                        Image(systemName: "person.circle.fill")
+                            .font(.system(size: 48))
+                            .foregroundStyle(.white)
                     }
                 }
                 .buttonStyle(.plain)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .background(Color(hex: "fbfbfb"))
-    }
-}
 
-// MARK: - Overview Section
+                Spacer().frame(height: 16)
 
-private struct ProfileOverviewSection: View {
-    let user: User?
-    let leaderboard: [Rating]
+                // Name — warm_green (#A8E6CF matches Android's warm_green)
+                Text(user.name)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(Color(hex: "A8E6CF"))
 
-    var body: some View {
-        VStack(spacing: 12) {
+                Text("My ID: \(user.studentID ?? "—")")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white)
 
-            // Stats row
-            HStack(spacing: 12) {
-                StatCard(value: "\(user?.eventsAttended ?? 0)", label: "Attended", icon: "calendar.badge.checkmark", color: Color.primaryGreen)
-                StatCard(value: "\(user?.eventsCompleted ?? 0)", label: "Completed", icon: "checkmark.seal.fill", color: Color.socialColor)
-                StatCard(value: "\(user?.longestStreak ?? 0)", label: "Best Streak", icon: "flame.fill", color: Color.warningColor)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
+                Text("Email: \(user.email)")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white)
 
-            // Leaderboard preview
-            if !leaderboard.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text("Leaderboard")
-                            .font(.h6)
-                            .foregroundStyle(Color(.label))
-                        Spacer()
-                        Text("Top \(leaderboard.count)")
-                            .font(.bodySmall)
-                            .foregroundStyle(Color(.systemGray))
+                Spacer().frame(height: 20)
+
+                Text("Points: \(user.totalESGScore)/1000")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white)
+
+                Spacer().frame(height: 8)
+
+                // Progress bar — dark bg + warm_green fill, height 18dp, rounded
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color(hex: "0A1F15"))
+                            .frame(height: 18)
+                        Capsule()
+                            .fill(Color(hex: "A8E6CF"))
+                            .frame(width: max(0, geo.size.width * animatedProgress), height: 18)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    .padding(.bottom, 8)
-
-                    ForEach(Array(leaderboard.enumerated()), id: \.element.id) { index, rating in
-                        LeaderboardRow(rating: rating, index: index)
-                        if index < leaderboard.count - 1 {
-                            Divider().padding(.horizontal, 16)
-                        }
+                }
+                .frame(height: 18)
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        animatedProgress = fraction
                     }
-
-                    Color.clear.frame(height: 10)
                 }
-                .padding(.horizontal, 16)
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
-                .overlay(
-                    RoundedRectangle(cornerRadius: CornerRadius.large)
-                        .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-                )
-                .padding(.horizontal, 16)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
     }
 }
 
-private struct StatCard: View {
-    let value: String
-    let label: String
-    let icon: String
-    let color: Color
+// MARK: - BadgesSection
+// Android: Column { Text("Badges"), FlowRow(maxLines=2 or all) { BadgeItem }, OutlinedButton("View more/less") }
 
-    var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(color)
-            Text(value)
-                .font(.h5)
-                .foregroundStyle(Color(.label))
-            Text(label)
-                .font(.captionSmall)
-                .foregroundStyle(Color(.systemGray))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.medium)
-                .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-        )
-    }
-}
-
-private struct LeaderboardRow: View {
-    let rating: Rating
-    let index: Int
-
-    var body: some View {
-        HStack(spacing: 12) {
-            // Rank
-            ZStack {
-                if index < 3 {
-                    Circle()
-                        .fill(rankColor(index).opacity(0.12))
-                        .frame(width: 32, height: 32)
-                    Text(rating.getRankBadge())
-                        .font(.system(size: 16))
-                } else {
-                    Circle()
-                        .fill(Color(hex: "f6f6f9"))
-                        .frame(width: 32, height: 32)
-                    Text("\(rating.rank)")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(.systemGray))
-                }
-            }
-
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(Color.primaryGreen.opacity(0.12))
-                    .frame(width: 36, height: 36)
-                Text(rating.userName.prefix(1).uppercased())
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.primaryGreen)
-            }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(rating.userName)
-                    .font(.bodyMedium)
-                    .foregroundStyle(Color(.label))
-                if let faculty = rating.faculty {
-                    Text(faculty)
-                        .font(.captionSmall)
-                        .foregroundStyle(Color(.systemGray))
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("\(rating.score) pts")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(.label))
-                if let change = rating.change, change != 0 {
-                    Text(change > 0 ? "▲\(change)" : "▼\(abs(change))")
-                        .font(.captionSmall)
-                        .foregroundStyle(change > 0 ? Color.successColor : Color.errorColor)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-    }
-
-    private func rankColor(_ index: Int) -> Color {
-        switch index {
-        case 0: return Color(hex: "FFD700")
-        case 1: return Color(hex: "C0C0C0")
-        case 2: return Color(hex: "CD7F32")
-        default: return Color.primaryGreen
-        }
-    }
-}
-
-// MARK: - Badges Section
-
-private struct ProfileBadgesSection: View {
+private struct BadgesSection: View {
     let badges: [Badge]
+    @State private var expanded = false
 
-    let columns = [GridItem(.flexible()), GridItem(.flexible())]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if badges.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "rosette")
-                        .font(.system(size: 48))
-                        .foregroundStyle(Color(hex: "e1e1e3"))
-                    Text("No badges yet")
-                        .font(.bodyMedium)
-                        .foregroundStyle(Color(.systemGray))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 60)
-            } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(badges) { badge in
-                        BadgeCard(badge: badge)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-            }
-        }
+    var displayed: [Badge] {
+        expanded ? badges : Array(badges.prefix(4))
     }
-}
-
-private struct BadgeCard: View {
-    let badge: Badge
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(badge.isUnlocked ? badgeColor(badge.type).opacity(0.15) : Color(hex: "f0f0f0"))
-                    .frame(width: 56, height: 56)
-                Image(systemName: badge.icon)
-                    .font(.system(size: 24))
-                    .foregroundStyle(badge.isUnlocked ? badgeColor(badge.type) : Color(hex: "c0c0c0"))
-            }
-
-            Text(badge.title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(badge.isUnlocked ? Color(.label) : Color(.systemGray))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-
-            Text(badge.description)
-                .font(.captionSmall)
-                .foregroundStyle(Color(.systemGray))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-
-            if !badge.isUnlocked {
-                Text("\(badge.pointsRequired) pts required")
-                    .font(.captionSmall)
-                    .foregroundStyle(Color.primaryGreen)
-            } else {
-                Text("Unlocked ✓")
-                    .font(.captionSmall)
-                    .foregroundStyle(Color.successColor)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.medium))
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.medium)
-                .stroke(badge.isUnlocked ? badgeColor(badge.type).opacity(0.3) : Color(hex: "e1e1e3"), lineWidth: 1)
-        )
-        .opacity(badge.isUnlocked ? 1.0 : 0.7)
-    }
-
-    private func badgeColor(_ type: BadgeType) -> Color {
-        switch type {
-        case .environmental: return Color.environmentalColor
-        case .social:        return Color.socialColor
-        case .governance:    return Color.governanceColor
-        case .milestone:     return Color(hex: "FFD700")
-        case .special:       return Color.primaryGreen
-        }
-    }
-}
-
-// MARK: - Settings Section
-
-private struct ProfileSettingsSection: View {
-    @Binding var showLogoutConfirm: Bool
-    @AppStorage("isDarkMode") private var isDarkMode = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Appearance group
-            SettingsGroup(title: "Appearance") {
-                Toggle(isOn: $isDarkMode) {
-                    SettingsRow(icon: "moon.fill", iconColor: Color(hex: "5856D6"), title: "Dark Mode")
-                }
-                .tint(Color.primaryGreen)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-
-            // Account group
-            SettingsGroup(title: "Account") {
-                Button {
-                    // TODO: Edit Profile
-                } label: {
-                    SettingsRowChevron(icon: "person.fill", iconColor: Color.primaryGreen, title: "Edit Profile")
-                }
-
-                Divider().padding(.horizontal, 16)
-
-                Button {
-                    // TODO: Notifications settings
-                } label: {
-                    SettingsRowChevron(icon: "bell.fill", iconColor: Color.socialColor, title: "Notifications")
-                }
-
-                Divider().padding(.horizontal, 16)
-
-                Button {
-                    // TODO: Privacy
-                } label: {
-                    SettingsRowChevron(icon: "lock.fill", iconColor: Color(hex: "34C759"), title: "Privacy")
-                }
-            }
-
-            // Support group
-            SettingsGroup(title: "Support") {
-                Button {
-                    // TODO: Help
-                } label: {
-                    SettingsRowChevron(icon: "questionmark.circle.fill", iconColor: Color(hex: "FF9500"), title: "Help & FAQ")
-                }
-
-                Divider().padding(.horizontal, 16)
-
-                Button {
-                    if let url = URL(string: "mailto:support@esg-kbtu.kz") {
-                        UIApplication.shared.open(url)
-                    }
-                } label: {
-                    SettingsRowChevron(icon: "envelope.fill", iconColor: Color.infoColor, title: "Contact Us")
-                }
-            }
-
-            // Logout
-            Button {
-                showLogoutConfirm = true
-            } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.errorColor.opacity(0.12))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 16))
-                            .foregroundStyle(Color.errorColor)
-                    }
-                    Text("Sign Out")
-                        .font(.bodyMedium)
-                        .foregroundStyle(Color.errorColor)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
-                .overlay(
-                    RoundedRectangle(cornerRadius: CornerRadius.large)
-                        .stroke(Color.errorColor.opacity(0.2), lineWidth: 1)
-                )
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .buttonStyle(.plain)
-        }
-        .padding(.top, 12)
-    }
-}
-
-private struct SettingsGroup<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: () -> Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(Color(.systemGray))
-                .textCase(.uppercase)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 6)
+            Text("Badges")
+                .font(.system(size: 22, weight: .bold))
+                .padding(.bottom, 8)
 
-            VStack(spacing: 0) {
-                content()
+            if badges.isEmpty {
+                Text("No badges earned yet")
+                    .foregroundStyle(.gray)
+            } else {
+                // Wrap layout
+                WrapLayout(spacing: 8) {
+                    ForEach(displayed) { badge in
+                        BadgePill(badge: badge)
+                    }
+                }
+
+                Spacer().frame(height: 8)
+
+                // View more / less — OutlinedButton style
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(expanded ? "View less" : "View more")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.black)
+                        Image(systemName: expanded ? "chevron.up" : "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.black)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .overlay(Capsule().stroke(Color.black, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
-            .background(Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: CornerRadius.large))
-            .overlay(
-                RoundedRectangle(cornerRadius: CornerRadius.large)
-                    .stroke(Color(hex: "e1e1e3"), lineWidth: 1)
-            )
-            .padding(.horizontal, 16)
-        }
-        .padding(.top, 8)
-    }
-}
-
-private struct SettingsRow: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 36, height: 36)
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundStyle(iconColor)
-            }
-            Text(title)
-                .font(.bodyMedium)
-                .foregroundStyle(Color(.label))
         }
     }
 }
 
-private struct SettingsRowChevron: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
+// MARK: - BadgePill
+// Android BadgeItem: Card(shape=Capsule, color by type) { Row { Image(badge icon 24dp), Text(name) } }
+
+private struct BadgePill: View {
+    let badge: Badge
+
+    var style: (bg: Color, fg: Color) {
+        switch badge.type {
+        case .environmental: return (Color(hex: "4CAF50"), .white)
+        case .social:        return (Color(hex: "A8E6CF"), .black)
+        case .governance:    return (Color(hex: "1A4A30"), Color(hex: "A8E6CF"))
+        default:             return (.white, .black)
+        }
+    }
+
+    var sfSymbol: String {
+        let s = badge.icon.lowercased()
+        if s.contains("event_champion") { return "trophy.fill" }
+        if s.contains("event_legend")   { return "star.fill" }
+        if s.contains("event_master")   { return "medal.fill" }
+        if s.contains("gold")           { return "circle.fill" }
+        if s.contains("silver")         { return "circle.fill" }
+        if s.contains("bronze")         { return "circle.fill" }
+        if s.contains("shopaholic")     { return "bag.fill" }
+        if s.contains("big_spender")    { return "creditcard.fill" }
+        if s.contains("collector")      { return "tray.full.fill" }
+        return "rosette"
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 36, height: 36)
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundStyle(iconColor)
-            }
-            Text(title)
-                .font(.bodyMedium)
-                .foregroundStyle(Color(.label))
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color(.systemGray3))
+        HStack(spacing: 4) {
+            Image(systemName: sfSymbol)
+                .font(.system(size: 16))
+                .foregroundStyle(style.fg)
+                .frame(width: 24, height: 24)
+            Text(badge.title)
+                .font(.system(size: 16))
+                .foregroundStyle(style.fg)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
+        .background(style.bg)
+        .clipShape(Capsule())
+    }
+}
+
+// MARK: - NavigationCardList
+// Android NavigationCard: for each item → Row(padding top/bottom 20dp, start 28dp) { icon(green,20dp) + text(weight=1) + chevron } + HorizontalDivider
+
+private struct NavigationCardList: View {
+    let items: [(String, String)] // (sfSymbol, label)
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(items, id: \.1) { item in
+                Button {} label: {
+                    HStack(spacing: 0) {
+                        Spacer().frame(width: 8)
+                        Image(systemName: item.0)
+                            .font(.system(size: 20))
+                            .foregroundStyle(Color.primaryGreen)
+                            .frame(width: 20, height: 20)
+                        Spacer().frame(width: 12)
+                        Text(item.1)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.black)
+                            .frame(width: 32, height: 32)
+                    }
+                    .padding(.vertical, 20)
+                    .padding(.leading, 28)
+                    .padding(.trailing, 20)
+                }
+                .buttonStyle(.plain)
+
+                Divider().background(Color(hex: "DDDDDD"))
+            }
+        }
+    }
+}
+
+// MARK: - ManagerMemberActions
+
+private struct ManagerMemberActions: View {
+    let role: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if role == "manager" {
+                Spacer().frame(height: 16)
+                CapsuleButton(title: "Add Event") {}
+                CapsuleButton(title: "View Student Requests") {}
+                CapsuleButton(title: "View All Student Purchases") {}
+            }
+            if role == "member" || role == "manager" {
+                CapsuleButton(title: "Add Project") {}
+            }
+        }
+    }
+}
+
+private struct CapsuleButton: View {
+    let title: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(Color.primaryGreen)
+                .clipShape(Capsule())
+                .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - EditProfileDialog
+// Android: AlertDialog { OutlinedTextField(studentId) + OutlinedTextField(email) }
+
+struct EditProfileDialog: View {
+    @Environment(\.dismiss) private var dismiss
+    @State var studentId: String
+    @State var email: String
+    let onSave: (String, String) -> Void
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                Spacer().frame(height: 8)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Student ID (optional)")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.gray)
+                    TextField("Student ID", text: $studentId)
+                        .padding(12)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.primaryGreen, lineWidth: 1))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Email")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.gray)
+                    TextField("Email", text: $email)
+                        .autocapitalization(.none)
+                        .keyboardType(.emailAddress)
+                        .padding(12)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.primaryGreen, lineWidth: 1))
+                }
+
+                Spacer()
+
+                Button {
+                    onSave(studentId, email)
+                    dismiss()
+                } label: {
+                    Text("Save Changes")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color(hex: "4CAF50"))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                Button("Cancel") { dismiss() }
+                    .foregroundStyle(.gray)
+            }
+            .padding(20)
+            .navigationTitle("Edit credentials")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+// MARK: - RatingView stub
+
+struct RatingView: View {
+    var body: some View {
+        Text("Rating Screen")
+            .navigationTitle("Ratings")
+    }
+}
+
+// MARK: - WrapLayout (FlowRow equivalent)
+
+private struct WrapLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? 0
+        var height: CGFloat = 0
+        var rowWidth: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if rowWidth + size.width > maxWidth && rowWidth > 0 {
+                height += rowHeight + spacing
+                rowWidth = 0
+                rowHeight = 0
+            }
+            rowWidth += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        height += rowHeight
+        return CGSize(width: maxWidth, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX && x > bounds.minX {
+                y += rowHeight + spacing
+                x = bounds.minX
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 

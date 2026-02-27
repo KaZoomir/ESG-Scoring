@@ -29,7 +29,16 @@ class ProfileViewModel: ObservableObject {
     init() { loadProfile() }
 
     func loadProfile() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = Auth.auth().currentUser?.uid else {
+            // Not logged in — show mock so UI doesn't hang
+            user = User(
+                id: "preview",
+                name: "User",
+                email: "",
+                totalESGScore: 0
+            )
+            return
+        }
         isLoading = true
 
         firestore.collection("users").document(uid).getDocument { [weak self] snapshot, _ in

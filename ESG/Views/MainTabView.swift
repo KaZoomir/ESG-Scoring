@@ -49,13 +49,11 @@ struct MainTabView: View {
                 .tag(AppTab.shop)
 
             // Profile
-            Text("Profile")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: "fbfbfb"))
-                .tabItem {
-                    Label("Profile", systemImage: AppTab.profile.icon)
-                }
-                .tag(AppTab.profile)
+            ProfileView()
+                           .tabItem {
+                            Label("Profile", systemImage: AppTab.profile.icon)
+                           }
+                           .tag(AppTab.profile)
         }
         .tint(Color.primaryGreen)
         .onChange(of: selectedTab) { newTab in
