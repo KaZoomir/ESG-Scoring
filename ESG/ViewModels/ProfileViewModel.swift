@@ -17,90 +17,135 @@ class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    // UI state
     @Published var showEditDialog = false
     @Published var showLogoutConfirm = false
     @Published var isLoggedOut = false
 
-    private let userService = UserService.shared
-    private var cancellables = Set<AnyCancellable>()
     private let firestore = Firestore.firestore()
 
     init() { loadProfile() }
 
+    // MARK: - Load (mirrors fetchUserProfile + fetchAllBadges + fetchUserBadges)
+
     func loadProfile() {
         guard let uid = Auth.auth().currentUser?.uid else {
-            // Not logged in — show mock so UI doesn't hang
-            user = User(
-                id: "preview",
-                name: "User",
-                email: "",
-                totalESGScore: 0
-            )
+            // Not signed in yet — clear state so view doesn't hang
+            user = nil
+            isLoading = false
             return
         }
+
         isLoading = true
 
-        firestore.collection("users").document(uid).getDocument { [weak self] snapshot, _ in
+        // 1. Fetch user document (same as Android: firestore.collection("users").document(userId).get())
+        firestore.collection("users").document(uid).getDocument { [weak self] snapshot, error in
+            guard let self else { return }
+
             DispatchQueue.main.async {
-                if let data = snapshot?.data() {
-                    self?.user = User(
-                        id: uid,
-                        name: data["name"] as? String ?? "User",
-                        email: data["email"] as? String ?? "",
-                        totalESGScore: data["overallPoints"] as? Int ?? data["totalESGScore"] as? Int ?? 0,
-                        studentID: data["studentId"] as? String,
-                        faculty: data["faculty"] as? String,
-                        environmentalScore: data["environmentalScore"] as? Int ?? 0,
-                        socialScore: data["socialScore"] as? Int ?? 0,
-                        governanceScore: data["governanceScore"] as? Int ?? 0,
-                        eventsAttended: data["eventsAttended"] as? Int ?? 0,
-                        eventsCompleted: data["eventsCompleted"] as? Int ?? 0,
-                        currentStreak: data["currentStreak"] as? Int ?? 0,
-                        longestStreak: data["longestStreak"] as? Int ?? 0
-                    )
-                } else {
-                    // Fallback mock
-                    self?.user = User(
-                        id: uid,
-                        name: Auth.auth().currentUser?.displayName ?? "User",
-                        email: Auth.auth().currentUser?.email ?? "",
-                        totalESGScore: 450,
-                        studentID: "22B030477",
-                        faculty: "SITE",
-                        environmentalScore: 150,
-                        socialScore: 200,
-                        governanceScore: 100,
-                        eventsAttended: 12,
-                        eventsCompleted: 10,
-                        currentStreak: 5,
-                        longestStreak: 8
-                    )
+                if let error {
+                    self.errorMessage = error.localizedDescription
+                    self.isLoading = false
+                    return
                 }
-                self?.isLoading = false
+
+                let data = snapshot?.data() ?? [:]
+
+                // Always set user — fallback to Firebase Auth if Firestore doc missing
+                let overallPoints = data["overallPoints"] as? Int ?? 0
+
+                self.user = User(
+                    id: uid,
+                    name:          data["fullName"]  as? String ?? Auth.auth().currentUser?.displayName ?? "User",
+                    email:         data["email"]     as? String ?? Auth.auth().currentUser?.email ?? "",
+                    totalESGScore: overallPoints,
+                    studentID:     data["studentId"] as? String,
+                    faculty:       data["faculty"]   as? String,
+                    role:          data["role"]      as? String ?? "user"
+                )
+                self.isLoading = false
+
+                // 2. After user is loaded, fetch badges
+                self.fetchBadges(uid: uid, earnedBadgeIds: data["badges"] as? [String: Bool] ?? [:])
             }
         }
-
-        // Badges
-        userService.fetchBadges(userId: uid)
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { _ in },
-                receiveValue: { [weak self] in self?.badges = $0 }
-            )
-            .store(in: &cancellables)
     }
+
+    // MARK: - Fetch badges
+    // Android: fetchAllBadges() → collection("badges").get(), then fetchUserBadges() filters by user's Map<String,Bool>
+
+    private func fetchBadges(uid: String, earnedBadgeIds: [String: Bool]) {
+        firestore.collection("badges").getDocuments { [weak self] snapshot, error in
+            guard let self else { return }
+
+            DispatchQueue.main.async {
+                self.isLoading = false
+
+                if let error {
+                    self.errorMessage = error.localizedDescription
+                    return
+                }
+
+                guard let docs = snapshot?.documents else { return }
+
+                // Build all badges from "badges" collection
+                // Filter only earned ones (earnedBadgeIds[docId] == true)
+                self.badges = docs.compactMap { doc -> Badge? in
+                    guard earnedBadgeIds[doc.documentID] == true else { return nil }
+
+                    let data = doc.data()
+                    return Badge(
+                        id:             doc.documentID,
+                        title:          data["name"]        as? String ?? "",
+                        icon:           data["icon"]        as? String ?? "",
+                        description:    data["description"] as? String ?? "",
+                        type:           self.badgeType(from: data["type"] as? String ?? ""),
+                        pointsRequired: data["condition"]   as? Int ?? 0,
+                        isUnlocked:     true
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Refresh
+
+    func refreshProfile() {
+        loadProfile()
+    }
+
+    // MARK: - Update user (mirrors Android updateUser — only updates studentId)
 
     func updateUser(studentId: String, email: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
-        let updates: [String: Any] = ["studentId": studentId, "email": email]
-        firestore.collection("users").document(uid).updateData(updates)
-        user?.studentID = studentId
-        user?.email = email
+
+        let updates: [String: Any] = ["studentId": studentId]
+
+        firestore.collection("users").document(uid).updateData(updates) { [weak self] error in
+            DispatchQueue.main.async {
+                if let error {
+                    self?.errorMessage = error.localizedDescription
+                } else {
+                    self?.user?.studentID = studentId
+                }
+            }
+        }
     }
+
+    // MARK: - Logout
 
     func logout() {
         try? Auth.auth().signOut()
         isLoggedOut = true
+    }
+
+    // MARK: - Helpers
+
+    private func badgeType(from string: String) -> BadgeType {
+        switch string.lowercased() {
+        case "event":  return .social
+        case "shop":   return .governance
+        case "points": return .environmental
+        default:       return .milestone
+        }
     }
 }

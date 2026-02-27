@@ -18,7 +18,7 @@ struct ProfileView: View {
             ZStack {
                 Color(hex: "F2F2F2").ignoresSafeArea()
 
-                if viewModel.isLoading && viewModel.user == nil {
+                if viewModel.user == nil {
                     ProgressView()
                 } else {
                     ScrollView(showsIndicators: false) {
@@ -174,7 +174,7 @@ private struct ProfileHeaderCard: View {
                     endPoint: .bottomTrailing
                 ))
 
-            // Edit icon — top endё
+            // Edit icon — top end
             Button(action: onEditClick) {
                 Image(systemName: "pencil")
                     .font(.system(size: 22))
