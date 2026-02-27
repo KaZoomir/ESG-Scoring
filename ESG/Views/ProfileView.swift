@@ -86,7 +86,6 @@ struct ProfileView: View {
                                 // MARK: Navigation + Sign Out Card
                                 VStack(spacing: 0) {
                                     NavigationCardList(items: [
-                                        ("magnifyingglass",    "Explore"),
                                         ("calendar",           "My Events"),
                                         ("envelope",           "Contact Us"),
                                         ("gearshape",          "Settings"),

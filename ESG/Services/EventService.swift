@@ -69,7 +69,7 @@ class EventService {
             Event(
                 title: "Campus Clean-Up Day",
                 description: "Join us for a campus-wide clean-up initiative. Bring gloves and help make our university greener!",
-                date: Date().addingTimeInterval(86400 * 3),
+                date: "2026-03-02",
                 time: "10:00",
                 location: "Main Campus",
                 organizer: "Green Club",
@@ -82,7 +82,7 @@ class EventService {
             Event(
                 title: "Mental Health Workshop",
                 description: "Learn about mental health awareness and stress management techniques.",
-                date: Date().addingTimeInterval(86400 * 5),
+                date: "2026-03-04",
                 time: "14:00",
                 location: "Conference Hall A",
                 organizer: "Student Welfare",
@@ -95,7 +95,7 @@ class EventService {
             Event(
                 title: "Student Council Elections",
                 description: "Participate in the democratic process of selecting your student representatives.",
-                date: Date().addingTimeInterval(86400 * 7),
+                date: "2026-03-06",
                 time: "09:00",
                 location: "Online",
                 organizer: "Student Council",
@@ -107,7 +107,7 @@ class EventService {
             Event(
                 title: "Tree Planting Initiative",
                 description: "Plant trees around campus and contribute to carbon offset goals.",
-                date: Date().addingTimeInterval(86400 * 10),
+                date: "2026-03-09",
                 time: "08:00",
                 location: "Campus Gardens",
                 organizer: "Eco Warriors",
@@ -120,7 +120,7 @@ class EventService {
             Event(
                 title: "Charity Fundraiser",
                 description: "Raise funds for local orphanages through a bake sale and entertainment.",
-                date: Date().addingTimeInterval(86400 * 14),
+                date: "2026-03-13",
                 time: "12:00",
                 location: "Student Center",
                 organizer: "Charity Club",
@@ -141,7 +141,7 @@ class EventService {
         let event = Event(
             title: "Campus Clean-Up Day",
             description: "Join us for a campus-wide clean-up initiative. Help make our university cleaner and greener!",
-            date: Date().addingTimeInterval(86400 * 3),
+            date: "2026-03-02",
             time: "10:00",
             location: "Main Campus",
             organizer: "Green Club",

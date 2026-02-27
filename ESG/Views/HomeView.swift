@@ -268,16 +268,12 @@ struct EventCardView: View {
                     }
                 }
                 
-                // Right: event illustration
-                // Android: Image(event_picture, height=132dp, ContentScale.Fit)
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.primaryGreen.opacity(0.08))
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(Color.primaryGreen.opacity(0.5))
-                }
-                .frame(height: 100)
+                // Right: event illustration — Android: Image(event_picture, height=132dp, ContentScale.Fit)
+                Image("event_picture")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 132)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .padding(.leading, 20)
             .padding(.trailing, 2)
@@ -340,7 +336,7 @@ struct EventCardView: View {
 
 // MARK: - Project Card
 
-private struct ProjectCardView: View {
+struct ProjectCardView: View {
     let project: Project
     let onLike: () -> Void
     
@@ -389,14 +385,13 @@ private struct ProjectCardView: View {
             VStack(alignment: .leading, spacing: 0) {
                 
                 HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .strokeBorder(Color(.systemGray4), lineWidth: 1)
-                            .frame(width: 52, height: 52)
-                        Image(systemName: "person.3.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Color.primaryGreen)
-                    }
+                    // Android: Box(52dp circle border) { Image(event_picture, ContentScale.Crop) }
+                    Image("event_picture")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 52, height: 52)
+                        .clipShape(Circle())
+                        .overlay(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text(project.name)

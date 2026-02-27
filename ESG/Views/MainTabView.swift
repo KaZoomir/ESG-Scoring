@@ -24,9 +24,7 @@ struct MainTabView: View {
                 .tag(AppTab.home)
 
             // Explore
-            Text("Explore")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: "fbfbfb"))
+            ExploreView()
                 .tabItem {
                     Label("Explore", systemImage: AppTab.explore.icon)
                 }

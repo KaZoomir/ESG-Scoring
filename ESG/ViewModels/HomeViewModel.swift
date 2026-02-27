@@ -36,8 +36,11 @@ class HomeViewModel: ObservableObject {
     // MARK: - Computed Properties
     
     var upcomingEvents: [Event] {
-        events
-            .filter { $0.date >= Date() }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        return events
+            .filter { $0.date >= today }
             .sorted { $0.date < $1.date }
     }
     
@@ -80,9 +83,20 @@ class HomeViewModel: ObservableObject {
                 return
             }
             
-            let fetched = snapshot?.documents.compactMap { doc in
-                try? doc.data(as: Event.self)
-            } ?? []
+            let fetched: [Event] = snapshot?.documents.compactMap { doc in
+                    let data = doc.data()
+                    return Event(
+                        id: doc.documentID,
+                        title: data["title"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        date: data["date"] as? String ?? "",
+                        time: data["time"] as? String ?? "",
+                        location: data["location"] as? String,
+                        type: data["type"] as? String,
+                        registeredUsers: [:],
+                        roles: [:]
+                    )
+                } ?? []
             
             DispatchQueue.main.async {
                 self.events = fetched
@@ -106,8 +120,18 @@ class HomeViewModel: ObservableObject {
                     return
                 }
                 
-                let fetched = snapshot?.documents.compactMap { doc in
-                    try? doc.data(as: Project.self)
+                let fetched: [Project] = snapshot?.documents.compactMap { doc in
+                    let data = doc.data()
+                    let ts = data["createdAt"] as? Timestamp
+                    return Project(
+                        id: doc.documentID,
+                        name: data["name"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        responseLink: data["responseLink"] as? String ?? "",
+                        creator: data["creator"] as? String ?? "",
+                        liked: data["liked"] as? [String] ?? [],
+                        createdAt: ts?.dateValue() ?? Date()
+                    )
                 } ?? []
                 
                 DispatchQueue.main.async {
@@ -310,8 +334,19 @@ class HomeViewModel: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self, error == nil, let snapshot = snapshot else { return }
                 
-                let fetched = snapshot.documents.compactMap { doc in
-                    try? doc.data(as: Event.self)
+                let fetched: [Event] = snapshot.documents.compactMap { doc in
+                    let data = doc.data()
+                    return Event(
+                        id: doc.documentID,
+                        title: data["title"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        date: data["date"] as? String ?? "",
+                        time: data["time"] as? String ?? "",
+                        location: data["location"] as? String,
+                        type: data["type"] as? String,
+                        registeredUsers: [:],
+                        roles: [:]
+                    )
                 }
                 
                 DispatchQueue.main.async {
@@ -324,8 +359,18 @@ class HomeViewModel: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self, error == nil, let snapshot = snapshot else { return }
                 
-                let fetched = snapshot.documents.compactMap { doc in
-                    try? doc.data(as: Project.self)
+                let fetched: [Project] = snapshot.documents.compactMap { doc in
+                    let data = doc.data()
+                    let ts = data["createdAt"] as? Timestamp
+                    return Project(
+                        id: doc.documentID,
+                        name: data["name"] as? String ?? "",
+                        description: data["description"] as? String ?? "",
+                        responseLink: data["responseLink"] as? String ?? "",
+                        creator: data["creator"] as? String ?? "",
+                        liked: data["liked"] as? [String] ?? [],
+                        createdAt: ts?.dateValue() ?? Date()
+                    )
                 }
                 
                 DispatchQueue.main.async {

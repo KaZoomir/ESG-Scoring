@@ -5,7 +5,6 @@
 //  Created by Alikhan Kassiman on 2026.02.12.
 //
 
-
 import Foundation
 import FirebaseFirestore
 
@@ -52,7 +51,7 @@ struct Event: Codable, Identifiable {
     // Firestore fields — match Android Event.kt exactly
     var title: String
     var description: String
-    var date: Date
+    var date: String           // "yyyy-MM-dd" string — same as Android
     var time: String           // "HH:mm" string — same as Android
     var location: String?
     var type: String?          // event type string from Android
@@ -77,7 +76,7 @@ struct Event: Codable, Identifiable {
         id: String? = nil,
         title: String,
         description: String,
-        date: Date,
+        date: String = "",
         time: String = "",
         location: String? = nil,
         type: String? = nil,
@@ -123,16 +122,23 @@ struct Event: Codable, Identifiable {
         registeredUsers.count
     }
     
-    var dayNumber: String {
+    // Parse "yyyy-MM-dd" string → day/month for EventCard display
+    private var parsedDate: Foundation.Date? {
         let f = DateFormatter()
-        f.dateFormat = "d"
-        return f.string(from: date)
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: date)
+    }
+    
+    var dayNumber: String {
+        guard let d = parsedDate else { return "-" }
+        let f = DateFormatter(); f.dateFormat = "d"
+        return f.string(from: d)
     }
     
     var monthName: String {
-        let f = DateFormatter()
-        f.dateFormat = "MMM"
-        return f.string(from: date)
+        guard let d = parsedDate else { return "-" }
+        let f = DateFormatter(); f.dateFormat = "MMM"
+        return f.string(from: d)
     }
     
     // MARK: - Business Logic (unchanged from original)
@@ -143,27 +149,26 @@ struct Event: Codable, Identifiable {
     }
     
     func canJoin() -> Bool {
-        return status == .upcoming && !isFull() && date > Date()
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        let today = f.string(from: Date())
+        return status == .upcoming && !isFull() && date > today
     }
     
     func timeUntilEvent() -> String {
-        let interval = date.timeIntervalSince(Date())
+        guard let d = parsedDate else { return "Starting soon" }
+        let interval = d.timeIntervalSince(Date())
         let days = Int(interval / 86400)
         let hours = Int((interval.truncatingRemainder(dividingBy: 86400)) / 3600)
-        
-        if days > 0 {
-            return "\(days) day(s)"
-        } else if hours > 0 {
-            return "\(hours) hour(s)"
-        } else {
-            return "Starting soon"
-        }
+        if days > 0 { return "\(days) day(s)" }
+        else if hours > 0 { return "\(hours) hour(s)" }
+        else { return "Starting soon" }
     }
     
     func formattedDate() -> String {
+        guard let d = parsedDate else { return date }
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM dd, yyyy • HH:mm"
-        return formatter.string(from: date)
+        formatter.dateFormat = "MMM dd, yyyy"
+        return formatter.string(from: d)
     }
 }
 

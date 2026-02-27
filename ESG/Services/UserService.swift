@@ -135,12 +135,11 @@ class UserService {
     
     private func mockFetchShopItems() -> AnyPublisher<[ShopItem], NetworkError> {
         let items = [
-            ShopItem(title: "ESG T-Shirt", cost: 200, description: "Official ESG KBTU T-shirt", category: .merchandise, stockAvailable: 50),
-            ShopItem(title: "Library Pass", cost: 150, description: "Extended library access for 1 month", category: .privileges),
-            ShopItem(title: "Cafeteria 20% Off", cost: 100, description: "20% discount at campus cafeteria", category: .discounts, validUntil: Date().addingTimeInterval(86400 * 30)),
-            ShopItem(title: "Mentor Session", cost: 300, description: "1-on-1 session with a sustainability expert", category: .experiences, stockAvailable: 10)
+            ShopItem(id: "1", name: "ESG T-Shirt",         description: "Official ESG KBTU T-shirt",                    price: 200, type: "merch"),
+            ShopItem(id: "2", name: "Library Pass",         description: "Extended library access for 1 month",          price: 150, type: "merch"),
+            ShopItem(id: "3", name: "Cafeteria 20% Off",    description: "20% discount at campus cafeteria",             price: 100, type: "discount"),
+            ShopItem(id: "4", name: "Mentor Session",       description: "1-on-1 session with a sustainability expert",  price: 300, type: "merch")
         ]
-        
         return networkService.mockRequest(result: .success(items))
     }
 }
