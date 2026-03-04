@@ -93,7 +93,7 @@ class ShopViewModel: ObservableObject{
     }
     
     // MARK: - Purchase
-    func purschaseItem(_ item: ShopItem) {
+    func purchaseItem(_ item: ShopItem) {
         guard let uid else{return}
         
         db.collection("users").document(uid).getDocument{[weak self] snap, _ in
