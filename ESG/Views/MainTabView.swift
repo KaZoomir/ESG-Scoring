@@ -33,15 +33,13 @@ struct MainTabView: View {
             // Create (центральная кнопка +)
             Color.clear
                 .tabItem {
-                    Label("Create", systemImage: "plus.circle.fill")
+                    Label("Game", systemImage: AppTab.game.icon)
                 }
-                .tag(AppTab.create)
+                .tag(AppTab.game)
 
             // Shop
-            Text("Shop")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: "fbfbfb"))
-                .tabItem {
+            ShopView()
+                .tabItem{
                     Label("Shop", systemImage: AppTab.shop.icon)
                 }
                 .tag(AppTab.shop)
@@ -55,15 +53,13 @@ struct MainTabView: View {
         }
         .tint(Color.primaryGreen)
         .onChange(of: selectedTab) { newTab in
-            if newTab == .create {
+            if newTab == .game {
                 showCreateSheet = true
-                // Возвращаем предыдущий таб, чтобы "+" не оставался выбранным
                 selectedTab = .home
             }
         }
         .sheet(isPresented: $showCreateSheet) {
-            // TODO: CreateEventView / CreateProjectView based on user role
-            Text("Create")
+            Text("Game")
         }
         .onAppear {
             configureTabBarAppearance()
@@ -98,13 +94,13 @@ struct MainTabView: View {
 // MARK: - AppTab
 
 enum AppTab: CaseIterable {
-    case home, explore, create, shop, profile
+    case home, explore, game, shop, profile
 
     var icon: String {
         switch self {
         case .home:    return "house.fill"
         case .explore: return "magnifyingglass"
-        case .create:  return "plus.circle.fill"
+        case .game:  return "gamecontroller.fill"
         case .shop:    return "bag.fill"
         case .profile: return "person.fill"
         }
