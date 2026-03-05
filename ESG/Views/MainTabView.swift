@@ -30,7 +30,7 @@ struct MainTabView: View {
                 }
                 .tag(AppTab.explore)
 
-            // Create (центральная кнопка +)
+            // Game
             Color.clear
                 .tabItem {
                     Label("Game", systemImage: AppTab.game.icon)
