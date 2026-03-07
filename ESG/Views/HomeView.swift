@@ -15,7 +15,7 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(hex: "fbfbfb").ignoresSafeArea()
+                Color(.systemBackground).ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     
